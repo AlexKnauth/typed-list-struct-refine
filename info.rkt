@@ -5,6 +5,7 @@
 (define deps
   '("base"
     "typed-racket-lib"
+    "type-expander"
     ))
 
 (define build-deps
