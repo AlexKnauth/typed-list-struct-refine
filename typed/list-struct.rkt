@@ -57,6 +57,24 @@
 
 ;; ------------------------------------------------------------------------
 
+;; (list-struct name ([field : type] ...) #:type-name Name)
+
+;; Defines:
+;;  - Name
+;;  - name
+;;  - name-field ...
+;; Name is a type for instances.
+;; name is a constructor and a type-expander. The constructor constructs
+;;   instances from the field values, just like a struct constructor.
+;;   The type-expander takes symbolic-objects (see grammar for Refine) and
+;;   expands to a type that refines the fields to be equal to the
+;;   symbolic-objects.
+;; name-field is an accessor and a type-expander. The accessor gets that
+;;   field from the instance, just like a struct accessor. The
+;;   type-expander takes a symbolic-path (see grammar for Refine) for an
+;;   instance, and expands to a symbolic-path for the field within the
+;;   instance.
+
 (define-syntax-parser list-struct
   #:literals [:]
   [(_ name ([field:id : type:expr] ...)
