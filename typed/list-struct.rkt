@@ -40,11 +40,18 @@
       (syntax-parse stx
         [(_ sp) (pe stx #'sp)])))
 
-  ;; accessor+path-elem : Id PathElemFn -> Procedure+TypeExpander
-  (define (accessor+path-elem internal-accessor-id path-elem-fn)
+  ;; var-like-transformer+type-expander :
+  ;; Id TypeExpanderFn -> Procedure+TypeExpander
+  (define (var-like-transformer+type-expander internal-id tef)
     (procedure+type-expander
      (set!-transformer-procedure
-      (make-variable-like-transformer internal-accessor-id))
+      (make-variable-like-transformer internal-id))
+     tef))
+
+  ;; accessor+path-elem : Id PathElemFn -> Procedure+TypeExpander
+  (define (accessor+path-elem internal-accessor-id path-elem-fn)
+    (var-like-transformer+type-expander
+     internal-accessor-id
      (pef->tef path-elem-fn)))
   )
 
@@ -58,7 +65,8 @@
    #:with [name-field ...]
    (for/list ([field (in-list (syntax->list #'[field ...]))])
      (format-id #'name "~a-~a" #'name field))
-   #:with [name-field* ...] (generate-temporaries #'[name-field ...])
+   #:with [name* name-field* ...]
+   (generate-temporaries #'[name name-field ...])
    #:with accessor-arg #'v
    #:with result-id #'r
    #:do [(define lst-indexes
@@ -78,13 +86,17 @@
        (struct Name-Desc [] #:transparent)
        (define-type Name
          (List Name-Desc type ...))
-       (: name (-> ([field : () type]
-                    ...)
-                   (Refine
-                    [result-id : Name]
-                    (and (= lst-path-result-part field)
-                         ...))))
-       (define (name field ...)
+       (define-syntax name
+         (var-like-transformer+type-expander
+          #'name*
+          (syntax-parser
+            [(_ (~var field expr) ...)
+             #'(Refine [result-id : Name]
+                       (and (= lst-path-result-part field) ...))])))
+       (: name* (-> ([field : () type]
+                     ...)
+                    (name field ...)))
+       (define (name* field ...)
          (define result-id (list (Name-Desc) field ...))
          (assert (= lst-path-result-part field)) ...
          result-id)
