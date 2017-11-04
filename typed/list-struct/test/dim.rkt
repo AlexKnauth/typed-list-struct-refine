@@ -14,32 +14,32 @@
    [T : Integer])
   #:type-name Dim)
 
-(: d1 : (Refine [d1 : Dim]
-                (and (= (dim-M d1) 0)
-                     (= (dim-L d1) 0)
-                     (= (dim-T d1) 0))))
+(: d1 (Refine [d1 : Dim]
+              (and (= (dim-M d1) 0)
+                   (= (dim-L d1) 0)
+                   (= (dim-T d1) 0))))
 (define d1 (dim 0 0 0))
 
-(: d+ : (-> ([a : () Dim]
-             [b : (a) (Refine
-                       [b : Dim]
-                       (and (= (dim-M a) (dim-M b))
-                            (= (dim-L a) (dim-L b))
-                            (= (dim-T a) (dim-T b))))])
-            (Refine
-             [r : Dim]
-             (and (= (dim-M a) (dim-M r))
-                  (= (dim-L a) (dim-L r))
-                  (= (dim-T a) (dim-T r))))))
+(: d+ (-> ([a : () Dim]
+           [b : (a) (Refine
+                     [b : Dim]
+                     (and (= (dim-M a) (dim-M b))
+                          (= (dim-L a) (dim-L b))
+                          (= (dim-T a) (dim-T b))))])
+          (Refine
+           [r : Dim]
+           (and (= (dim-M a) (dim-M r))
+                (= (dim-L a) (dim-L r))
+                (= (dim-T a) (dim-T r))))))
 (define (d+ a b) a)
 
-(: d* : (-> ([a : () Dim]
-             [b : () Dim])
-            (Refine
-             [r : Dim]
-             (and (= (dim-M r) (+ (dim-M a) (dim-M b)))
-                  (= (dim-L r) (+ (dim-L a) (dim-L b)))
-                  (= (dim-T r) (+ (dim-T a) (dim-T b)))))))
+(: d* (-> ([a : () Dim]
+           [b : () Dim])
+          (Refine
+           [r : Dim]
+           (and (= (dim-M r) (+ (dim-M a) (dim-M b)))
+                (= (dim-L r) (+ (dim-L a) (dim-L b)))
+                (= (dim-T r) (+ (dim-T a) (dim-T b)))))))
 (define (d* a b)
   (define r
     (dim (+ (dim-M a) (dim-M b))
@@ -47,13 +47,13 @@
          (+ (dim-T a) (dim-T b))))
   r)
 
-(: d/ : (-> ([a : () Dim]
-             [b : () Dim])
-            (Refine
-             [r : Dim]
-             (and (= (dim-M r) (- (dim-M a) (dim-M b)))
-                  (= (dim-L r) (- (dim-L a) (dim-L b)))
-                  (= (dim-T r) (- (dim-T a) (dim-T b)))))))
+(: d/ (-> ([a : () Dim]
+           [b : () Dim])
+          (Refine
+           [r : Dim]
+           (and (= (dim-M r) (- (dim-M a) (dim-M b)))
+                (= (dim-L r) (- (dim-L a) (dim-L b)))
+                (= (dim-T r) (- (dim-T a) (dim-T b)))))))
 (define (d/ a b)
   (define r
     (dim (- (dim-M a) (dim-M b))
@@ -61,12 +61,12 @@
          (- (dim-T a) (dim-T b))))
   r)
 
-(: dsqr : (-> ([a : () Dim])
-              (Refine
-               [r : Dim]
-               (and (= (dim-M r) (* 2 (dim-M a)))
-                    (= (dim-L r) (* 2 (dim-L a)))
-                    (= (dim-T r) (* 2 (dim-T a)))))))
+(: dsqr (-> ([a : () Dim])
+            (Refine
+             [r : Dim]
+             (and (= (dim-M r) (* 2 (dim-M a)))
+                  (= (dim-L r) (* 2 (dim-L a)))
+                  (= (dim-T r) (* 2 (dim-T a)))))))
 (define (dsqr a)
   (d* a a))
 
@@ -77,10 +77,10 @@
   [(_ name : (dim-id:dim M L T) expr)
    (syntax-property
     #'(begin
-        (:: name : (Refine [name : Dim]
-                           (and (= (dim-M name) M)
-                                (= (dim-L name) L)
-                                (= (dim-T name) T))))
+        (: name (Refine [name : Dim]
+                        (and (= (dim-M name) M)
+                             (= (dim-L name) L)
+                             (= (dim-T name) T))))
         (define name expr))
     'disappeared-use
     (list (syntax-local-introduce #'dim-id)))])
@@ -112,18 +112,18 @@
 
 ;; ------------------------------------------------------------------------
 
-(: kinetic-energy/dim : (-> ([m : () (Refine [m : Dim]
-                                             (and (= (dim-M m) 1)
-                                                  (= (dim-L m) 0)
-                                                  (= (dim-T m) 0)))]
-                             [v : () (Refine [v : Dim]
-                                             (and (= (dim-M v) 0)
-                                                  (= (dim-L v) 1)
-                                                  (= (dim-T v) -1)))])
-                            (Refine [r : Dim]
-                                    (and (= (dim-M r) 1)
-                                         (= (dim-L r) 2)
-                                         (= (dim-T r) -2)))))
+(: kinetic-energy/dim (-> ([m : () (Refine [m : Dim]
+                                           (and (= (dim-M m) 1)
+                                                (= (dim-L m) 0)
+                                                (= (dim-T m) 0)))]
+                           [v : () (Refine [v : Dim]
+                                           (and (= (dim-M v) 0)
+                                                (= (dim-L v) 1)
+                                                (= (dim-T v) -1)))])
+                          (Refine [r : Dim]
+                                  (and (= (dim-M r) 1)
+                                       (= (dim-L r) 2)
+                                       (= (dim-T r) -2)))))
 (define (kinetic-energy/dim m v)
   (define r
     (d* m (dsqr v)))

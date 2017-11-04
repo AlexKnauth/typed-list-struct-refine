@@ -6,11 +6,17 @@
          (for-syntax racket/base
                      racket/list
                      racket/syntax
-                     syntax/id-table))
+                     syntax/id-table
+                     syntax/transformer
+                     type-expander/expander))
 
 ;; ------------------------------------------------------------------------
 
 (begin-for-syntax
+  (struct procedure+type-expander [procedure type-expander]
+    #:property prop:procedure (struct-field-index procedure)
+    #:property prop:type-expander (struct-field-index type-expander))
+
   ;; A PathElemFn is a [Stx Stx -> Stx]
   ;; The first argument represents the source location for the path.
   ;; The second argument replesents the symbolic path it starts from.
@@ -32,7 +38,15 @@
   (define (pef->tef pe)
     (λ (stx)
       (syntax-parse stx
-        [(_ sp) (pe stx #'sp)]))))
+        [(_ sp) (pe stx #'sp)])))
+
+  ;; accessor+path-elem : Id PathElemFn -> Procedure+TypeExpander
+  (define (accessor+path-elem internal-accessor-id path-elem-fn)
+    (procedure+type-expander
+     (set!-transformer-procedure
+      (make-variable-like-transformer internal-accessor-id))
+     (pef->tef path-elem-fn)))
+  )
 
 ;; ------------------------------------------------------------------------
 
@@ -44,6 +58,7 @@
    #:with [name-field ...]
    (for/list ([field (in-list (syntax->list #'[field ...]))])
      (format-id #'name "~a-~a" #'name field))
+   #:with [name-field* ...] (generate-temporaries #'[name-field ...])
    #:with accessor-arg #'v
    #:with result-id #'r
    #:do [(define lst-indexes
@@ -73,17 +88,17 @@
          (define result-id (list (Name-Desc) field ...))
          (assert (= lst-path-result-part field)) ...
          result-id)
-       (: name-field (-> ([accessor-arg : () Name])
-                         (Refine
-                          [r : type]
-                          (= r lst-path-accessor))))
+       (: name-field* (-> ([accessor-arg : () Name])
+                          (Refine
+                           [r : type]
+                           (= r lst-path-accessor))))
        ...
-       (define (name-field accessor-arg)
+       (define (name-field* accessor-arg)
          lst-path-accessor)
        ...
-       (begin-for-syntax
-         (patch-type-expander #'name-field (pef->tef (pe:list-ref 'lst-i)))
-         ...))])
+       (define-syntax name-field
+         (accessor+path-elem #'name-field* (pe:list-ref 'lst-i)))
+       ...)])
 
 ;; ------------------------------------------------------------------------
 
