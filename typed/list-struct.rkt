@@ -11,6 +11,8 @@
                      syntax/stx
                      syntax/transformer
                      type-expander/expander))
+(module+ test
+  (require typed/rackunit))
 
 ;; ------------------------------------------------------------------------
 
@@ -64,8 +66,15 @@
     (if (syntax? stx) (syntax-e stx) stx))
   ;; A SPEquality is one of:
   ;;  - Id
-  ;;  - (sp-parts [Listof [Pair Id SPEquality]])
+  ;;  - (sp-parts [Listof [Pair PathElemIds SPEquality]])
   (struct sp-parts [accessors/speqs] #:prefab)
+
+  ;; A PathElemIds is a [StxListof Id]
+  ;; app-path-elem-ids : PathElemIds Stx -> Stx
+  (define (app-path-elem-ids ids base)
+    (foldr (λ (id base) #`(#,id #,base))
+           base
+           (stx->list ids)))
 
   ;; sptype-table : [FreeIdTableof SPEquality]
   (define sptype-table
@@ -74,9 +83,17 @@
 
   (define-syntax-class sptype
     #:attributes [speq]
+    #:literals [List]
     [pattern x:id
       #:attr speq (free-id-table-ref sptype-table #'x #f)
-      #:when (attribute speq)])
+      #:when (attribute speq)]
+    [pattern (List t:sptype ...)
+      #:attr speq
+      (sp-parts
+       (for/list ([t-speq (in-list (attribute t.speq))]
+                  [i (in-naturals)])
+         (cons (cons #'car (make-list i #'cdr))
+               t-speq)))])
 
   (define (sp=/stx speq a b)
     (cond
@@ -88,8 +105,8 @@
                                    (sp-parts-accessors/speqs
                                     (stx-e speq))))])
                (sp=/stx (stx-cdr acc/speq)
-                        #`(#,(stx-car acc/speq) #,a)
-                        #`(#,(stx-car acc/speq) #,b))))])))
+                        (app-path-elem-ids (stx-car acc/speq) a)
+                        (app-path-elem-ids (stx-car acc/speq) b))))])))
 
 (define-syntax sp=
   (procedure+type-expander
@@ -137,7 +154,8 @@
          (define lst-path-elems
            (map pe:list-ref lst-indexes))
          (define name-speq
-           (sp-parts (stx-map cons #'[name-field ...] (attribute type.speq))))
+           (sp-parts
+            (stx-map cons #'[[name-field] ...] (attribute type.speq))))
          (define lst-path-accessors
            (for/list ([pe (in-list lst-path-elems)])
              (pe #'here #'accessor-arg)))
@@ -180,4 +198,12 @@
        ...)])
 
 ;; ------------------------------------------------------------------------
+
+(module+ test
+  (check-true (sp= (List Integer Integer Integer)
+                   (list 1 2 3)
+                   (list 1 2 3)))
+  (check-false (sp= (List Integer Integer Integer)
+                    (list 1 2 3)
+                    (list 1 3 3))))
 
