@@ -83,8 +83,10 @@
    #:with [name-field ...]
    (for/list ([field (in-list (syntax->list #'[field ...]))])
      (format-id #'name "~a-~a" #'name field))
-   #:with [name* name-field* ...]
-   (generate-temporaries #'[name name-field ...])
+   #:with [name* field* ...]
+   (generate-temporaries #'[name field ...])
+   #:with [name-field* ...]
+   (generate-temporaries #'[name-field ...])
    #:with accessor-arg #'v
    #:with result-id #'r
    #:do [(define lst-indexes
@@ -108,15 +110,15 @@
          (var-like-transformer+type-expander
           #'name*
           (syntax-parser
-            [(_ (~var field expr) ...)
+            [(_ (~var field* expr) ...)
              #'(Refine [result-id : Name]
-                       (and (= lst-path-result-part field) ...))])))
-       (: name* (-> ([field : () type]
+                       (and (= lst-path-result-part field*) ...))])))
+       (: name* (-> ([field* : () type]
                      ...)
-                    (name field ...)))
-       (define (name* field ...)
-         (define result-id (list (Name-Desc) field ...))
-         (assert (= lst-path-result-part field)) ...
+                    (name field* ...)))
+       (define (name* field* ...)
+         (define result-id (list (Name-Desc) field* ...))
+         (assert (= lst-path-result-part field*)) ...
          result-id)
        (: name-field* (-> ([accessor-arg : () Name])
                           (Refine
