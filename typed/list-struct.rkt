@@ -1,12 +1,14 @@
 #lang type-expander/base #:with-refinements
 
-(provide list-struct)
+(provide list-struct
+         sp=)
 
 (require syntax/parse/define
          (for-syntax racket/base
                      racket/list
                      racket/syntax
                      syntax/id-table
+                     syntax/stx
                      syntax/transformer
                      type-expander/expander))
 
@@ -57,6 +59,47 @@
 
 ;; ------------------------------------------------------------------------
 
+(begin-for-syntax
+  (define (stx-e stx)
+    (if (syntax? stx) (syntax-e stx) stx))
+  ;; A SPEquality is one of:
+  ;;  - Id
+  ;;  - (sp-parts [Listof [Pair Id SPEquality]])
+  (struct sp-parts [accessors/speqs] #:prefab)
+
+  ;; sptype-table : [FreeIdTableof SPEquality]
+  (define sptype-table
+    (make-free-id-table
+     (list (cons #'Integer #'=))))
+
+  (define-syntax-class sptype
+    #:attributes [speq]
+    [pattern x:id
+      #:attr speq (free-id-table-ref sptype-table #'x #f)
+      #:when (attribute speq)])
+
+  (define (sp=/stx speq a b)
+    (cond
+      [(identifier? speq) #`(#,speq #,a #,b)]
+      [else
+       #`(and
+          #,@(for/list ([acc/speq
+                         (in-list (stx->list
+                                   (sp-parts-accessors/speqs
+                                    (stx-e speq))))])
+               (sp=/stx (stx-cdr acc/speq)
+                        #`(#,(stx-car acc/speq) #,a)
+                        #`(#,(stx-car acc/speq) #,b))))])))
+
+(define-syntax sp=
+  (procedure+type-expander
+   (syntax-parser
+     [(_ type:sptype a b) (sp=/stx (attribute type.speq) #'a #'b)])
+   (syntax-parser
+     [(_ type:sptype a b) (sp=/stx (attribute type.speq) #'a #'b)])))
+
+;; ------------------------------------------------------------------------
+
 ;; (list-struct name ([field : type] ...) #:type-name Name)
 
 ;; Defines:
@@ -77,7 +120,7 @@
 
 (define-syntax-parser list-struct
   #:literals [:]
-  [(_ name ([field:id : type:expr] ...)
+  [(_ name ([field:id : type:sptype] ...)
       #:type-name Name)
    #:with Name-Desc (generate-temporary #'name)
    #:with [name-field ...]
@@ -93,6 +136,8 @@
            (map add1 (range (length (syntax->list #'[field ...])))))
          (define lst-path-elems
            (map pe:list-ref lst-indexes))
+         (define name-speq
+           (sp-parts (stx-map cons #'[name-field ...] (attribute type.speq))))
          (define lst-path-accessors
            (for/list ([pe (in-list lst-path-elems)])
              (pe #'here #'accessor-arg)))
@@ -106,24 +151,26 @@
        (struct Name-Desc [] #:transparent)
        (define-type Name
          (List Name-Desc type ...))
+       (begin-for-syntax
+         (free-id-table-set! sptype-table #'Name #'#,name-speq))
        (define-syntax name
          (var-like-transformer+type-expander
           #'name*
           (syntax-parser
             [(_ (~var field* expr) ...)
              #'(Refine [result-id : Name]
-                       (and (= lst-path-result-part field*) ...))])))
+                       (and (sp= type lst-path-result-part field*) ...))])))
        (: name* (-> ([field* : () type]
                      ...)
                     (name field* ...)))
        (define (name* field* ...)
          (define result-id (list (Name-Desc) field* ...))
-         (assert (= lst-path-result-part field*)) ...
+         (assert (sp= type lst-path-result-part field*)) ...
          result-id)
        (: name-field* (-> ([accessor-arg : () Name])
                           (Refine
                            [r : type]
-                           (= r lst-path-accessor))))
+                           (sp= type r lst-path-accessor))))
        ...
        (define (name-field* accessor-arg)
          lst-path-accessor)

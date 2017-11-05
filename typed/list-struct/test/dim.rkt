@@ -8,6 +8,17 @@
 
 ;; ------------------------------------------------------------------------
 
+(provide Dim
+         dim
+         dim-M
+         dim-L
+         dim-T
+         d1
+         d+
+         d*
+         d/
+         dsqr)
+
 (list-struct dim
   ([M : Integer]
    [L : Integer]
@@ -59,6 +70,21 @@
 
 ;; ------------------------------------------------------------------------
 
+(provide mass-dim
+         length-dim
+         time-dim
+         area-dim
+         volume-dim
+         mass-density-dim
+         velocity-dim
+         acceleration-dim
+         momentum-dim
+         force-dim
+         work-dim
+         energy-dim
+         power-dim
+         pressure-dim)
+
 ;; Base Dimensions
 (define mass-dim : (dim 1 0 0) (dim 1 0 0))
 (define length-dim : (dim 0 1 0) (dim 0 1 0))
@@ -86,6 +112,8 @@
 
 ;; ------------------------------------------------------------------------
 
+(provide kinetic-energy/dim)
+
 (: kinetic-energy/dim (-> ([m : () (dim 1 0 0)]
                            [v : () (dim 0 1 -1)])
                           (dim 1 2 -2)))
@@ -112,5 +140,7 @@
                     (kinetic-energy/dim (d* mass-density-dim volume-dim)
                                         (d* acceleration-dim time-dim)))
                 energy-dim)
+  (check-true (sp= Dim length-dim length-dim))
+  (check-false (sp= Dim length-dim mass-dim))
   )
 
