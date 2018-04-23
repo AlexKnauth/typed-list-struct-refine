@@ -112,15 +112,13 @@
 
 (begin-for-syntax
   ;; an equation saying `a` and `b` are equal
+  ;; `a` has to be a path, but `b` can be either a path or
+  ;; a `Refine` type
   (define (sv=/stx speq a b)
     (syntax-parse (list (expand-type a) (expand-type b))
       #:literals [Refine]
-      #;[[(Refine [x :colon τ_x] prop_x) (Refine [y :colon τ_y] prop_y)]
-       #'(......
-          ???
-          ......)]
-      [[a:expr (Refine ~! [x:id :colon τ:expr] prop:expr)]
-       #'(Let ([x a])
+      [[a-path:expr (Refine ~! [x:id :colon τ:expr] prop:expr)]
+       #'(Let ([x a-path])
            (and (tr: x τ)
                 prop))]
       [else
