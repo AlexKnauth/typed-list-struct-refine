@@ -2,7 +2,8 @@
 
 (require syntax/parse/define
          "../../list-struct.rkt"
-         (for-syntax racket/base))
+         (for-syntax racket/base
+                     "../util/with-type-expander.rkt"))
 (module+ test
   (require typed/rackunit))
 
@@ -13,6 +14,10 @@
          dim-M
          dim-L
          dim-T
+         D1
+         D*
+         D/
+         Dsqr
          d1
          d+
          d*
@@ -25,7 +30,44 @@
    [T : Integer])
   #:type-name Dim)
 
-(: d1 (dim 0 0 0))
+;; ------------------------------------------------------------------------
+
+(define-syntax D1
+  (var-like-transformer+type-expander
+   #'d1
+   (syntax-parser
+     [_:id #'(dim 0 0 0)])))
+
+(define-syntax D*
+  (var-like-transformer+type-expander
+   #'d*
+   (syntax-parser
+     [(_ a b)
+      #'(dim (+ (dim-M a) (dim-M b))
+             (+ (dim-L a) (dim-L b))
+             (+ (dim-T a) (dim-T b)))])))
+
+(define-syntax D/
+  (var-like-transformer+type-expander
+   #'d/
+   (syntax-parser
+     [(_ a b)
+      #'(dim (- (dim-M a) (dim-M b))
+             (- (dim-L a) (dim-L b))
+             (- (dim-T a) (dim-T b)))])))
+
+(define-syntax Dsqr
+  (var-like-transformer+type-expander
+   #'dsqr
+   (syntax-parser
+     [(_ a)
+      #'(dim (* 2 (dim-M a))
+             (* 2 (dim-L a))
+             (* 2 (dim-T a)))])))
+
+;; ------------------------------------------------------------------------
+
+(: d1 D1)
 (define d1 (dim 0 0 0))
 
 (: d+ (-> ([a : () Dim]
@@ -39,9 +81,7 @@
 
 (: d* (-> ([a : () Dim]
            [b : () Dim])
-          (dim (+ (dim-M a) (dim-M b))
-               (+ (dim-L a) (dim-L b))
-               (+ (dim-T a) (dim-T b)))))
+          (D* a b)))
 (define (d* a b)
   (define r
     (dim (+ (dim-M a) (dim-M b))
@@ -51,9 +91,7 @@
 
 (: d/ (-> ([a : () Dim]
            [b : () Dim])
-          (dim (- (dim-M a) (dim-M b))
-               (- (dim-L a) (dim-L b))
-               (- (dim-T a) (dim-T b)))))
+          (D/ a b)))
 (define (d/ a b)
   (define r
     (dim (- (dim-M a) (dim-M b))
@@ -62,9 +100,7 @@
   r)
 
 (: dsqr (-> ([a : () Dim])
-            (dim (* 2 (dim-M a))
-                 (* 2 (dim-L a))
-                 (* 2 (dim-T a)))))
+            (Dsqr a)))
 (define (dsqr a)
   (d* a a))
 
